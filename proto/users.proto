@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package users.service;
+option go_package = "./proto/users";
+
+import "google/api/annotations.proto";
+
+service Users {
+  rpc GetUserByID (GetUserByIdRequest) returns (User) {
+    option (google.api.http).get = "/api/v1/users/{id}";
+  }
+}
+message GetUserByIdRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+}
