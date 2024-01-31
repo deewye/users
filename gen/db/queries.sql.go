@@ -7,19 +7,42 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getUser = `-- name: GetUser :one
-SELECT name FROM users
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, name, birthday, created_at, updated_at
+FROM users
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (sql.NullString, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
-	var name sql.NullString
-	err := row.Scan(&name)
-	return name, err
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Birthday,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertUser = `-- name: InsertUser :exec
+INSERT INTO users (email, name, birthday)
+VALUES ($1, $2, $3)
+`
+
+type InsertUserParams struct {
+	Email    pgtype.Text
+	Name     pgtype.Text
+	Birthday pgtype.Timestamptz
+}
+
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
+	_, err := q.db.Exec(ctx, insertUser, arg.Email, arg.Name, arg.Birthday)
+	return err
 }

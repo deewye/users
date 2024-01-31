@@ -4,22 +4,38 @@ package users.service;
 option go_package = "./proto/users";
 
 import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+import "google/protobuf/timestamp.proto";
 
 service Users {
-  rpc GetUserByID (GetUserByIdRequest) returns (User) {
-    option (google.api.http).get = "/api/v1/users/{id}";
+  rpc InsertUser (InsertUserRequest) returns (InsertUserResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/user/create"
+      body: "*"
+    };
+  }
+  rpc GetUserByID (GetUserByIDRequest) returns (User) {
+    option (google.api.http).get = "/api/v1/user/get/{id}";
   }
 }
-message GetUserByIdRequest {
+
+message InsertUserRequest {
+    string email = 1;
+    string name = 2;
+    google.protobuf.Timestamp birthday = 3;
+}
+
+message InsertUserResponse {
   string id = 1;
 }
 
-message GetUserResponse {
-
+message GetUserByIDRequest {
+  string id = 1;
 }
 
 message User {
   string id = 1;
   string email = 2;
   string name = 3;
+  google.protobuf.Timestamp birthday = 4;
 }

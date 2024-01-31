@@ -16,7 +16,39 @@
     "application/json"
   ],
   "paths": {
-    "/api/v1/users/{id}": {
+    "/api/v1/user/create": {
+      "post": {
+        "operationId": "Users_InsertUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/serviceInsertUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/serviceInsertUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/user/get/{id}": {
       "get": {
         "operationId": "Users_GetUserByID",
         "responses": {
@@ -76,6 +108,29 @@
         }
       }
     },
+    "serviceInsertUserRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "birthday": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "serviceInsertUserResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
     "serviceUser": {
       "type": "object",
       "properties": {
@@ -87,6 +142,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "birthday": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     }
