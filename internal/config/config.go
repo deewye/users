@@ -1,7 +1,6 @@
 package config
 
 import (
-	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/pkg/errors"
 	"github.com/vrischmann/envconfig"
 )

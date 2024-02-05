@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
+	"github.com/deewye/users/gen/db"
 	"github.com/deewye/users/internal/config"
 	"github.com/deewye/users/internal/storage"
 )
@@ -32,8 +33,8 @@ func New(name string) App {
 	return &app{name: name}
 }
 
-func (app *app) Name() string {
-	return app.name
+func (a *app) Name() string {
+	return a.name
 }
 
 func (a *app) Config() *config.Config {
@@ -44,31 +45,33 @@ func (a *app) Storage() storage.Storage {
 	return a.storage
 }
 
-func (app *app) Run() error {
-	conf, err := config.InitConfig(app.name)
+func (a *app) Run() error {
+	conf, err := config.InitConfig(a.name)
 	if err != nil {
 		return fmt.Errorf("init app config: %w", err)
 	}
 
-	app.cfg = conf
+	a.cfg = conf
 
-	app.masterDB, app.slaveDB, err = initMasterSlaveDB(conf.Postgres.Master, conf.Postgres.Slave)
+	a.masterDB, a.slaveDB, err = initMasterSlaveDB(conf.Postgres.Master, conf.Postgres.Slave)
 	if err != nil {
 		// we do not need to stop the server, if database is unavailable. Kubernetes will work with it.
 		fmt.Printf("init pg: %s", err)
 	}
+
+	a.storage = storage.New(db.New(a.masterDB), db.New(a.slaveDB))
 
 	fmt.Println("Connected to database...")
 
 	return nil
 }
 
-func (app *app) OnShutdown() {
-	if err := app.masterDB.Close(); err != nil {
+func (a *app) OnShutdown() {
+	if err := a.masterDB.Close(); err != nil {
 		fmt.Printf("[OnShutdown] close master conn: %s", err)
 	}
 
-	if err := app.slaveDB.Close(); err != nil {
+	if err := a.slaveDB.Close(); err != nil {
 		fmt.Printf("[OnShutdown] close slave conn: %s", err)
 	}
 }
