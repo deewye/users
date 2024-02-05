@@ -7,8 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const getUserByID = `-- name: GetUserByID :one
@@ -17,8 +18,8 @@ FROM users
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByID, id)
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -37,12 +38,12 @@ VALUES ($1, $2, $3)
 `
 
 type InsertUserParams struct {
-	Email    pgtype.Text
-	Name     pgtype.Text
-	Birthday pgtype.Timestamptz
+	Email    sql.NullString
+	Name     sql.NullString
+	Birthday sql.NullTime
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
-	_, err := q.db.Exec(ctx, insertUser, arg.Email, arg.Name, arg.Birthday)
+	_, err := q.db.ExecContext(ctx, insertUser, arg.Email, arg.Name, arg.Birthday)
 	return err
 }
