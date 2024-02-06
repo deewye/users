@@ -2,16 +2,24 @@ package application
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
+	"syscall"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
 	"github.com/deewye/users/gen/db"
 	"github.com/deewye/users/internal/config"
+	"github.com/deewye/users/internal/server"
+	"github.com/deewye/users/internal/service"
 	"github.com/deewye/users/internal/storage"
 )
 
 type App interface {
+	Init() error
 	Run() error
 	Name() string
 	OnShutdown()
@@ -22,6 +30,7 @@ type App interface {
 type app struct {
 	name string
 	cfg  *config.Config
+	log  *logrus.Logger
 
 	masterDB *sqlx.DB
 	slaveDB  *sqlx.DB
@@ -45,7 +54,7 @@ func (a *app) Storage() storage.Storage {
 	return a.storage
 }
 
-func (a *app) Run() error {
+func (a *app) Init() error {
 	conf, err := config.InitConfig(a.name)
 	if err != nil {
 		return fmt.Errorf("init app config: %w", err)
@@ -53,15 +62,31 @@ func (a *app) Run() error {
 
 	a.cfg = conf
 
+	a.log = logrus.New()
+
 	a.masterDB, a.slaveDB, err = initMasterSlaveDB(conf.Postgres.Master, conf.Postgres.Slave)
 	if err != nil {
-		// we do not need to stop the server, if database is unavailable. Kubernetes will work with it.
 		fmt.Printf("init pg: %s", err)
 	}
 
 	a.storage = storage.New(db.New(a.masterDB), db.New(a.slaveDB))
 
-	fmt.Println("Connected to database...")
+	return nil
+}
+
+func (a *app) Run() error {
+	usersService := service.New(a.log, &a.storage)
+
+	grpcServer := server.NewGRPCServer(a.cfg.GrpcServer)
+	grpcServer.Init(a.log)
+
+	grpcServer.RegisterService(usersService)
+	if err := grpcServer.Start(); err != nil {
+		return err
+	}
+
+	a.gracefullyStop()
+	a.OnShutdown()
 
 	return nil
 }
@@ -100,4 +125,12 @@ func initDB(conf *config.DatabaseConfig) (*sqlx.DB, error) {
 	db.SetMaxIdleConns(conf.MaxIdleConn)
 
 	return db, nil
+}
+
+func (a *app) gracefullyStop() {
+	signals := []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, signals...)
+	stop := <-sig
+	fmt.Printf("stopping via signal %s", stop)
 }

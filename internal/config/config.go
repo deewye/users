@@ -1,14 +1,16 @@
 package config
 
 import (
+	"github.com/deewye/users/internal/server"
 	"github.com/pkg/errors"
 	"github.com/vrischmann/envconfig"
 )
 
 type (
 	Config struct {
-		Env      string `envconfig:"default=PROD"`
-		Postgres struct {
+		Env        string `envconfig:"default=PROD"`
+		GrpcServer *server.Config
+		Postgres   struct {
 			Master *DatabaseConfig
 			Slave  *DatabaseConfig
 		}
